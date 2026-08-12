@@ -1,0 +1,19 @@
+name = "poochert-core"
+main = "worker.js"
+compatibility_date = "2026-08-12"
+
+[vars]
+ENVIRONMENT = "production"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "poochert_db"
+database_id = "ae8cdc93-542b-4e66-a540-95ad64d5ca50"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "poochert-storage"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"

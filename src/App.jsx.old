@@ -13,14 +13,14 @@ const timelineMonths = Array.from({ length: totalMonths }).map((_, i) => {
   return { index: i, year: date.getFullYear(), month: date.getMonth(), isJan: date.getMonth() === 0 };
 });
 
+const mockImages = Array.from({ length: 500 }).map((_, i) => ({
+  id: i, url: `https://place.dog/400/300?id=${i}`, alt: `Good dog ${i}`,
+}));
+
 export default function App() {
   const parentRef = useRef(null);
   
-  // 1. Replaced static mockImages with React state
-  const [images, setImages] = useState([]);
-  const [dogName, setDogName] = useState('Poochert');
-
-  // References for direct DOM manipulation (bypassing React re-renders for smooth 60fps)
+  // References for direct DOM manipulation (bypassing React re-renders)
   const scrollbarTrackRef = useRef(null);
   const thumbRef = useRef(null);
   const yearRef = useRef(null);
@@ -29,11 +29,11 @@ export default function App() {
   const targetScroll = useRef(0);
   const requestRef = useRef();
 
-  // Visual grabbing states
+  // Visual grabbing states for CSS cursors
   const [isGalleryGrabbing, setIsGalleryGrabbing] = useState(false);
   const [isThumbGrabbing, setIsThumbGrabbing] = useState(false);
 
-  // Drag mathematics state
+  // Drag mathematics state (kept in refs to avoid re-renders during drag)
   const isDraggingGallery = useRef(false);
   const galleryStartX = useRef(0);
   const galleryStartScroll = useRef(0);
@@ -42,31 +42,9 @@ export default function App() {
   const thumbStartX = useRef(0);
   const thumbStartScroll = useRef(0);
 
-  // 2. Fetch live data from the Worker API on mount
-  useEffect(() => {
-    const pathParts = window.location.pathname.split('/').filter(Boolean);
-    const slug = pathParts[0] || 'bailey'; // Defaults to 'bailey' for local root testing
-
-    fetch(`/${slug}/api/photos`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.photos) {
-          setDogName(data.dogName);
-          const formattedImages = data.photos.map((photo, i) => ({
-            id: i,
-            url: photo.url,
-            alt: photo.caption || 'Dog photo',
-            takenAt: photo.takenAt
-          }));
-          setImages(formattedImages);
-        }
-      })
-      .catch(err => console.error("Failed to fetch timeline data:", err));
-  }, []);
-
   const virtualizer = useVirtualizer({
     horizontal: true,
-    count: images.length, // Uses dynamic state length
+    count: mockImages.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 420, 
     overscan: 3,
@@ -82,15 +60,19 @@ export default function App() {
         const el = parentRef.current;
         const maxScroll = el.scrollWidth - el.clientWidth;
         
+        // 1. Clamp the target so we can't scroll past the edges
         targetScroll.current = Math.max(0, Math.min(targetScroll.current, maxScroll));
+        
+        // 2. Linear Interpolation (Lerp) to smoothly close the distance
         const diff = targetScroll.current - el.scrollLeft;
         
         if (Math.abs(diff) > 0.5) {
-          el.scrollLeft += diff * 0.12; 
+          el.scrollLeft += diff * 0.12; // Easing factor: Lower = smoother/slower, Higher = snappier
         } else {
-          el.scrollLeft = targetScroll.current; 
+          el.scrollLeft = targetScroll.current; // Snap to target when extremely close
         }
 
+        // 3. Update Custom Scrollbar & Year directly in the DOM
         const progress = maxScroll > 0 ? el.scrollLeft / maxScroll : 0;
         
         if (thumbRef.current) {
@@ -147,7 +129,7 @@ export default function App() {
       
       const deltaX = e.clientX - thumbStartX.current;
       const trackWidth = scrollbarTrackRef.current.clientWidth;
-      const maxThumbTravel = trackWidth - 120; 
+      const maxThumbTravel = trackWidth - 120; // 120px thumb width
       
       const deltaProgress = deltaX / maxThumbTravel;
       const maxScroll = parentRef.current.scrollWidth - parentRef.current.clientWidth;
@@ -175,6 +157,7 @@ export default function App() {
 
     const handleWheel = (e) => {
       e.preventDefault(); 
+      // Add both Y (standard wheel) and X (trackpad swipe) to support all devices
       targetScroll.current += e.deltaY + e.deltaX; 
     };
 
@@ -185,6 +168,7 @@ export default function App() {
   return (
     <div style={{ height: '100vh', width: '100vw', padding: '40px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc', fontFamily: 'sans-serif' }}>
       
+      {/* We set overflowX to 'hidden' so the browser's native trackpad momentum doesn't fight our custom physics engine */}
       <div
         ref={parentRef}
         onMouseDown={handleGalleryMouseDown}
@@ -205,9 +189,7 @@ export default function App() {
           
           <div style={{ height: 'calc(100% - 100px)', position: 'relative', width: '100%' }}>
             {virtualizer.getVirtualItems().map((virtualItem) => {
-              const image = images[virtualItem.index]; // 3. Mapped from state array
-              if (!image) return null;
-              
+              const image = mockImages[virtualItem.index];
               return (
                 <div key={virtualItem.key} style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${virtualItem.size}px`, transform: `translateX(${virtualItem.start}px)`, paddingRight: '20px', boxSizing: 'border-box' }}>
                   <img src={image.url} alt={image.alt} draggable={false} style={{ height: '100%', width: '100%', objectFit: 'cover', borderRadius: '12px', pointerEvents: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
@@ -237,6 +219,7 @@ export default function App() {
       </div>
 
       <div ref={scrollbarTrackRef} style={{ width: '100%', height: '10px', backgroundColor: '#E2E8F0', borderRadius: '5px', marginTop: '40px', position: 'relative' }}>
+        
         <div 
           ref={thumbRef}
           onMouseDown={handleThumbMouseDown}
@@ -248,12 +231,13 @@ export default function App() {
             backgroundColor: isThumbGrabbing ? '#475569' : '#64748B', 
             borderRadius: '5px',
             cursor: isThumbGrabbing ? 'grabbing' : 'grab',
-            left: 0, 
+            left: 0, // Now updated via the animation loop
             display: 'flex',
             justifyContent: 'center'
           }}
         >
           <div style={{ position: 'absolute', top: '-30px', backgroundColor: '#1E293B', color: 'white', padding: '4px 12px', borderRadius: '99px', fontSize: '14px', fontWeight: 'bold', pointerEvents: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            {/* Start year is the initial state before the animation loop updates it */}
             <span ref={yearRef}>{startYear}</span> 
           </div>
         </div>

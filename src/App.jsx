@@ -53,7 +53,6 @@ export default function App() {
   useEffect(() => {
     const updateHeight = () => {
       if (parentRef.current) {
-        // Subtract 100px for the timeline ticks area to get the true photo zone height
         const newHeight = parentRef.current.clientHeight - 100; 
         if (newHeight > 0) setTrackHeight(newHeight);
       }
@@ -64,7 +63,7 @@ export default function App() {
     return () => window.removeEventListener('resize', updateHeight);
   }, []);
 
-  // Pass tracked DOM height into the segment calculator
+  // Pass tracked DOM height into the segment calculator[cite: 2]
   const segments = useMemo(
     () => calculateTimelineSegments(images, aspectRatios, trackHeight),
     [images, aspectRatios, trackHeight]
@@ -296,139 +295,152 @@ export default function App() {
         </div>
       )}
 
-      {/* GALLERY */}
+      {/* GALLERY CONTAINER WITH SUBTLE HORIZONTAL VIGNETTE */}
       <div 
-        ref={parentRef} 
-        onMouseDown={handleGalleryMouseDown} 
-        onMouseLeave={handleGalleryMouseUp} 
-        onMouseUp={handleGalleryMouseUp} 
-        onMouseMove={handleGalleryMouseMove}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        style={{ flex: 1, width: '100%', overflowX: 'hidden', overflowY: 'hidden', cursor: isGalleryGrabbing ? 'grabbing' : 'grab', userSelect: 'none', position: 'relative', touchAction: 'none' }}
+        style={{ flex: 1, width: '100%', position: 'relative', overflow: 'hidden' }}
       >
-        <div style={{ height: '100%', width: `${totalWidth}px`, position: 'relative' }}>
-          
-          <div style={{ height: '100%', position: 'relative', width: '100%' }}>
-            {virtualizer.getVirtualItems().map((virtualItem) => {
-              const segment = segments[virtualItem.index];
-              if (!segment) return null;
-              
-              return (
-                <div key={virtualItem.key} style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${virtualItem.size}px`, transform: `translateX(${virtualItem.start}px)`, boxSizing: 'border-box' }}>
-                  
-                  {/* PHOTOS CONTAINER (UPPER AREA) - HORIZONTAL MASONRY */}
-                  <div style={{ height: 'calc(100% - 100px)', width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: segment.type === 'gap' ? 'center' : 'flex-start', paddingRight: '20px' }}>
-                    
-                    {segment.type === 'month' && (
-                      <div style={{ 
-                        display: 'flex', 
-                        flexDirection: 'column',
-                        gap: '12px', 
-                        height: '100%', 
-                        width: 'max-content',
-                        justifyContent: 'center'
-                      }}>
-                        {segment.rows && segment.rows.map((row, rowIndex) => (
-                          <div key={rowIndex} style={{
-                            display: 'flex',
-                            flexDirection: 'row',
-                            gap: '12px',
-                            height: segment.rows.length === 1 ? '100%' : 'calc(50% - 6px)',
-                            alignItems: 'center'
-                          }}>
-                            {row.map((image) => {
-                              const isHovered = hoveredPhotoId === image.id;
+        {/* Subtle Horizontal Vignette Overlay */}
+        <div style={{ 
+          position: 'absolute', 
+          inset: 0, 
+          pointerEvents: 'none', 
+          background: 'linear-gradient(to right, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0) 20%, rgba(0,0,0,0) 80%, rgba(0,0,0,0.12) 100%)', 
+          zIndex: 40 
+        }} />
 
-                              return (
-                                <div 
-                                  key={image.id}
-                                  className="fish-eye-tile"
-                                  data-hovered={isHovered ? 'true' : 'false'}
-                                  onMouseEnter={() => setHoveredPhotoId(image.id)}
-                                  onMouseLeave={() => setHoveredPhotoId(null)}
-                                  onClick={() => isAdmin && setSelectedPhoto(image)}
-                                  style={{ 
-                                    position: 'relative', 
-                                    height: '100%', 
-                                    aspectRatio: `${image.ratio}`,
-                                    cursor: isAdmin ? 'pointer' : 'default',
-                                    willChange: 'transform',
-                                    flexShrink: 0
-                                  }}
-                                >
-                                  <div style={{ 
-                                    position: 'relative', 
-                                    height: '100%', 
-                                    width: '100%',
-                                    transform: `scale(${isHovered ? 1.08 : 1})`,
-                                    transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease-out',
-                                    transformOrigin: 'center center'
-                                  }}>
-                                    <img 
-                                      src={image.url} 
-                                      alt={image.alt} 
-                                      draggable={false} 
-                                      onLoad={(e) => handleImageLoad(image.id, e)}
-                                      style={{ 
-                                        height: '100%', 
-                                        width: '100%', 
-                                        objectFit: 'cover', 
-                                        borderRadius: '12px', 
-                                        pointerEvents: 'none', 
-                                        boxShadow: isHovered ? '0 20px 36px rgba(0,0,0,0.35)' : '0 4px 6px rgba(0,0,0,0.1)' 
-                                      }} 
-                                    />
-                                    <div style={{ position: 'absolute', bottom: '8px', left: '8px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>
-                                      {image.takenAt} {isAdmin && '✏️'}
+        <div 
+          ref={parentRef} 
+          onMouseDown={handleGalleryMouseDown} 
+          onMouseLeave={handleGalleryMouseUp} 
+          onMouseUp={handleGalleryMouseUp} 
+          onMouseMove={handleGalleryMouseMove}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{ height: '100%', width: '100%', overflowX: 'hidden', overflowY: 'hidden', cursor: isGalleryGrabbing ? 'grabbing' : 'grab', userSelect: 'none', position: 'relative', touchAction: 'none' }}
+        >
+          <div style={{ height: '100%', width: `${totalWidth}px`, position: 'relative' }}>
+            
+            <div style={{ height: '100%', position: 'relative', width: '100%' }}>
+              {virtualizer.getVirtualItems().map((virtualItem) => {
+                const segment = segments[virtualItem.index];
+                if (!segment) return null;
+                
+                return (
+                  <div key={virtualItem.key} style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${virtualItem.size}px`, transform: `translateX(${virtualItem.start}px)`, boxSizing: 'border-box' }}>
+                    
+                    {/* PHOTOS CONTAINER (UPPER AREA) - HORIZONTAL MASONRY */}
+                    <div style={{ height: 'calc(100% - 100px)', width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: segment.type === 'gap' ? 'center' : 'flex-start', paddingRight: '20px' }}>
+                      
+                      {segment.type === 'month' && (
+                        <div style={{ 
+                          display: 'flex', 
+                          flexDirection: 'column',
+                          gap: '12px', 
+                          height: '100%', 
+                          width: 'max-content',
+                          justifyContent: 'center'
+                        }}>
+                          {segment.rows && segment.rows.map((row, rowIndex) => (
+                            <div key={rowIndex} style={{
+                              display: 'flex',
+                              flexDirection: 'row',
+                              gap: '12px',
+                              height: segment.rows.length === 1 ? '100%' : 'calc(50% - 6px)',
+                              alignItems: 'center'
+                            }}>
+                              {row.map((image) => {
+                                const isHovered = hoveredPhotoId === image.id;
+
+                                return (
+                                  <div 
+                                    key={image.id}
+                                    className="fish-eye-tile"
+                                    data-hovered={isHovered ? 'true' : 'false'}
+                                    onMouseEnter={() => setHoveredPhotoId(image.id)}
+                                    onMouseLeave={() => setHoveredPhotoId(null)}
+                                    onClick={() => isAdmin && setSelectedPhoto(image)}
+                                    style={{ 
+                                      position: 'relative', 
+                                      height: '100%', 
+                                      aspectRatio: `${image.ratio}`,
+                                      cursor: isAdmin ? 'pointer' : 'default',
+                                      willChange: 'transform',
+                                      flexShrink: 0
+                                    }}
+                                  >
+                                    <div style={{ 
+                                      position: 'relative', 
+                                      height: '100%', 
+                                      width: '100%',
+                                      transform: `scale(${isHovered ? 1.08 : 1})`,
+                                      transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease-out',
+                                      transformOrigin: 'center center'
+                                    }}>
+                                      <img 
+                                        src={image.url} 
+                                        alt={image.alt} 
+                                        draggable={false} 
+                                        onLoad={(e) => handleImageLoad(image.id, e)}
+                                        style={{ 
+                                          height: '100%', 
+                                          width: '100%', 
+                                          objectFit: 'cover', 
+                                          borderRadius: '12px', 
+                                          pointerEvents: 'none', 
+                                          boxShadow: isHovered ? '0 20px 36px rgba(0,0,0,0.35)' : '0 4px 6px rgba(0,0,0,0.1)' 
+                                        }} 
+                                      />
+                                      <div style={{ position: 'absolute', bottom: '8px', left: '8px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>
+                                        {image.takenAt} {isAdmin && '✏️'}
+                                      </div>
+                                      {isAdmin && isHovered && (
+                                        <button
+                                          onClick={(e) => handleDeletePhoto(e, image.id)}
+                                          title="Delete photo"
+                                          style={{
+                                            position: 'absolute', top: '8px', right: '8px', backgroundColor: '#EF4444', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                                          }}
+                                        >
+                                          ✕
+                                        </button>
+                                      )}
                                     </div>
-                                    {isAdmin && isHovered && (
-                                      <button
-                                        onClick={(e) => handleDeletePhoto(e, image.id)}
-                                        title="Delete photo"
-                                        style={{
-                                          position: 'absolute', top: '8px', right: '8px', backgroundColor: '#EF4444', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
-                                        }}
-                                      >
-                                        ✕
-                                      </button>
-                                    )}
                                   </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
-                    {segment.type === 'gap' && (
-                      <div style={{ color: '#94A3B8', fontSize: '24px', fontWeight: 'bold', letterSpacing: '4px' }}>
-                        ...
-                      </div>
-                    )}
+                      {segment.type === 'gap' && (
+                        <div style={{ color: '#94A3B8', fontSize: '24px', fontWeight: 'bold', letterSpacing: '4px' }}>
+                          ...
+                        </div>
+                      )}
+                    </div>
+
+                    {/* TIMELINE TICKS (LOWER AREA) */}
+                    <div style={{ height: '100px', width: '100%', position: 'absolute', bottom: 0 }}>
+                      <div style={{ position: 'absolute', top: '20px', left: 0, right: 0, height: '6px', backgroundColor: '#CBD5E1', borderRadius: '3px' }} />
+                      
+                      {segment.type === 'month' && (
+                        <div style={{ position: 'absolute', left: '20px', top: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', transform: 'translateX(-50%)' }}>
+                          <div style={{ width: '2px', height: '16px', backgroundColor: '#64748B', marginTop: '-4px', borderRadius: '2px' }} />
+                          <span style={{ marginTop: '8px', color: '#475569', fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                            {monthNames[segment.month]} {segment.year}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
                   </div>
+                );
+              })}
+            </div>
 
-                  {/* TIMELINE TICKS (LOWER AREA) */}
-                  <div style={{ height: '100px', width: '100%', position: 'absolute', bottom: 0 }}>
-                    <div style={{ position: 'absolute', top: '20px', left: 0, right: 0, height: '6px', backgroundColor: '#CBD5E1', borderRadius: '3px' }} />
-                    
-                    {segment.type === 'month' && (
-                      <div style={{ position: 'absolute', left: '20px', top: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', transform: 'translateX(-50%)' }}>
-                        <div style={{ width: '2px', height: '16px', backgroundColor: '#64748B', marginTop: '-4px', borderRadius: '2px' }} />
-                        <span style={{ marginTop: '8px', color: '#475569', fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                          {monthNames[segment.month]} {segment.year}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                </div>
-              );
-            })}
           </div>
-
         </div>
       </div>
 

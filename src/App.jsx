@@ -63,7 +63,7 @@ export default function App() {
     return () => window.removeEventListener('resize', updateHeight);
   }, []);
 
-  // Pass tracked DOM height into the segment calculator[cite: 2]
+  // Pass tracked DOM height into the segment calculator
   const segments = useMemo(
     () => calculateTimelineSegments(images, aspectRatios, trackHeight),
     [images, aspectRatios, trackHeight]
@@ -274,37 +274,37 @@ export default function App() {
   }, []);
 
   return (
-    <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} style={{ height: '100vh', width: '100%', maxWidth: '100vw', padding: '6px 4px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc', fontFamily: 'sans-serif', position: 'relative', overflowX: 'hidden' }}>
+    <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} style={{ height: '100vh', width: '100%', maxWidth: '100vw', padding: '8px 0 12px 0', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', backgroundColor: '#0b0f19', fontFamily: 'sans-serif', position: 'relative', overflowX: 'hidden' }}>
       
       {/* HEADER */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '8px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '8px', padding: '0 16px' }}>
         <div />
-        <h1 style={{ margin: 0, fontSize: '26px', color: '#1E293B', textAlign: 'center', fontWeight: '700' }}>{dogName}</h1>
+        <h1 style={{ margin: 0, fontSize: '26px', color: '#F8FAFC', textAlign: 'center', fontWeight: '700' }}>{dogName}</h1>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', alignItems: 'center' }}>
           {!isAdmin ? (
-            <button onClick={handleAdminLogin} style={{ padding: '6px 12px', fontSize: '12px', borderRadius: '6px', border: '1px solid #CBD5E1', background: 'white', cursor: 'pointer' }}>Admin Mode</button>
+            <button onClick={handleAdminLogin} style={{ padding: '6px 12px', fontSize: '12px', borderRadius: '6px', border: '1px solid #334155', background: '#1E293B', color: '#F8FAFC', cursor: 'pointer' }}>Admin Mode</button>
           ) : (
-            <span style={{ fontSize: '12px', color: '#10B981', fontWeight: 'bold' }}>🔒 Admin Active</span>
+            <span style={{ fontSize: '12px', color: '#34D399', fontWeight: 'bold' }}>🔒 Admin Active</span>
           )}
         </div>
       </div>
 
       {isDraggingOver && (
         <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '4px dashed #3B82F6', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-          <h2 style={{ color: '#1D4ED8' }}>Drop photos here to upload!</h2>
+          <h2 style={{ color: '#60A5FA' }}>Drop photos here to upload!</h2>
         </div>
       )}
 
-      {/* GALLERY CONTAINER WITH SUBTLE HORIZONTAL VIGNETTE */}
+      {/* GALLERY CONTAINER WITH RICH DARK HORIZONTAL VIGNETTE */}
       <div 
         style={{ flex: 1, width: '100%', position: 'relative', overflow: 'hidden' }}
       >
-        {/* Subtle Horizontal Vignette Overlay */}
+        {/* Rich Dark Horizontal Vignette Overlay */}
         <div style={{ 
           position: 'absolute', 
           inset: 0, 
           pointerEvents: 'none', 
-          background: 'linear-gradient(to right, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0) 20%, rgba(0,0,0,0) 80%, rgba(0,0,0,0.12) 100%)', 
+          background: 'linear-gradient(to right, rgba(11,15,25,0.85) 0%, rgba(11,15,25,0) 18%, rgba(11,15,25,0) 82%, rgba(11,15,25,0.85) 100%)', 
           zIndex: 40 
         }} />
 
@@ -330,7 +330,7 @@ export default function App() {
                   <div key={virtualItem.key} style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${virtualItem.size}px`, transform: `translateX(${virtualItem.start}px)`, boxSizing: 'border-box' }}>
                     
                     {/* PHOTOS CONTAINER (UPPER AREA) - HORIZONTAL MASONRY */}
-                    <div style={{ height: 'calc(100% - 100px)', width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: segment.type === 'gap' ? 'center' : 'flex-start', paddingRight: '20px' }}>
+                    <div style={{ height: 'calc(100% - 100px)', width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: segment.type === 'gap' ? 'center' : 'flex-start', paddingRight: '20px', paddingLeft: '12px' }}>
                       
                       {segment.type === 'month' && (
                         <div style={{ 
@@ -388,10 +388,10 @@ export default function App() {
                                           objectFit: 'cover', 
                                           borderRadius: '12px', 
                                           pointerEvents: 'none', 
-                                          boxShadow: isHovered ? '0 20px 36px rgba(0,0,0,0.35)' : '0 4px 6px rgba(0,0,0,0.1)' 
+                                          boxShadow: isHovered ? '0 20px 36px rgba(0,0,0,0.6)' : '0 4px 6px rgba(0,0,0,0.3)' 
                                         }} 
                                       />
-                                      <div style={{ position: 'absolute', bottom: '8px', left: '8px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>
+                                      <div style={{ position: 'absolute', bottom: '8px', left: '8px', backgroundColor: 'rgba(0,0,0,0.7)', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>
                                         {image.takenAt} {isAdmin && '✏️'}
                                       </div>
                                       {isAdmin && isHovered && (
@@ -399,7 +399,7 @@ export default function App() {
                                           onClick={(e) => handleDeletePhoto(e, image.id)}
                                           title="Delete photo"
                                           style={{
-                                            position: 'absolute', top: '8px', right: '8px', backgroundColor: '#EF4444', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                                            position: 'absolute', top: '8px', right: '8px', backgroundColor: '#EF4444', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.4)'
                                           }}
                                         >
                                           ✕
@@ -415,7 +415,7 @@ export default function App() {
                       )}
 
                       {segment.type === 'gap' && (
-                        <div style={{ color: '#94A3B8', fontSize: '24px', fontWeight: 'bold', letterSpacing: '4px' }}>
+                        <div style={{ color: '#475569', fontSize: '24px', fontWeight: 'bold', letterSpacing: '4px' }}>
                           ...
                         </div>
                       )}
@@ -423,12 +423,12 @@ export default function App() {
 
                     {/* TIMELINE TICKS (LOWER AREA) */}
                     <div style={{ height: '100px', width: '100%', position: 'absolute', bottom: 0 }}>
-                      <div style={{ position: 'absolute', top: '20px', left: 0, right: 0, height: '6px', backgroundColor: '#CBD5E1', borderRadius: '3px' }} />
+                      <div style={{ position: 'absolute', top: '20px', left: 0, right: 0, height: '6px', backgroundColor: '#1E293B', borderRadius: '3px' }} />
                       
                       {segment.type === 'month' && (
                         <div style={{ position: 'absolute', left: '20px', top: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', transform: 'translateX(-50%)' }}>
                           <div style={{ width: '2px', height: '16px', backgroundColor: '#64748B', marginTop: '-4px', borderRadius: '2px' }} />
-                          <span style={{ marginTop: '8px', color: '#475569', fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                          <span style={{ marginTop: '8px', color: '#94A3B8', fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap' }}>
                             {monthNames[segment.month]} {segment.year}
                           </span>
                         </div>
@@ -445,25 +445,27 @@ export default function App() {
       </div>
 
       {/* SCROLLBAR */}
-      <div ref={scrollbarTrackRef} style={{ width: '100%', height: '10px', backgroundColor: '#E2E8F0', borderRadius: '5px', marginTop: '12px', position: 'relative' }}>
-        <div ref={thumbRef} onMouseDown={handleThumbMouseDown} style={{ position: 'absolute', top: 0, height: '100%', width: '120px', backgroundColor: isThumbGrabbing ? '#475569' : '#64748B', borderRadius: '5px', cursor: isThumbGrabbing ? 'grabbing' : 'grab', left: 0, display: 'flex', justifyContent: 'center' }}>
-          <div style={{ position: 'absolute', top: '-36px', backgroundColor: '#1E293B', color: 'white', padding: '4px 12px', borderRadius: '99px', fontSize: '13px', fontWeight: 'bold', pointerEvents: 'none', whiteSpace: 'nowrap', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-            <span ref={dateBubbleRef}>--</span> 
+      <div style={{ padding: '0 16px' }}>
+        <div ref={scrollbarTrackRef} style={{ width: '100%', height: '10px', backgroundColor: '#1E293B', borderRadius: '5px', marginTop: '12px', position: 'relative' }}>
+          <div ref={thumbRef} onMouseDown={handleThumbMouseDown} style={{ position: 'absolute', top: 0, height: '100%', width: '120px', backgroundColor: isThumbGrabbing ? '#64748B' : '#475569', borderRadius: '5px', cursor: isThumbGrabbing ? 'grabbing' : 'grab', left: 0, display: 'flex', justifyContent: 'center' }}>
+            <div style={{ position: 'absolute', top: '-36px', backgroundColor: '#1E293B', color: '#F8FAFC', padding: '4px 12px', borderRadius: '99px', fontSize: '13px', fontWeight: 'bold', pointerEvents: 'none', whiteSpace: 'nowrap', boxShadow: '0 4px 6px rgba(0,0,0,0.4)', border: '1px solid #334155' }}>
+              <span ref={dateBubbleRef}>--</span> 
+            </div>
           </div>
         </div>
       </div>
 
       {/* EDIT MODAL */}
       {selectedPhoto && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <form onSubmit={handleSavePhotoChanges} style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', width: '320px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <form onSubmit={handleSavePhotoChanges} style={{ backgroundColor: '#1E293B', color: '#F8FAFC', padding: '24px', borderRadius: '12px', width: '320px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', border: '1px solid #334155' }}>
             <h3 style={{ marginTop: 0 }}>Edit Photo Details</h3>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '6px' }}>Date Taken:</label>
-            <input type="date" value={selectedPhoto.takenAt} onChange={(e) => setSelectedPhoto({ ...selectedPhoto, takenAt: e.target.value })} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '16px', borderRadius: '4px', border: '1px solid #CBD5E1' }} />
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '6px' }}>Caption:</label>
-            <input type="text" value={selectedPhoto.caption || ''} onChange={(e) => setSelectedPhoto({ ...selectedPhoto, caption: e.target.value })} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '16px', borderRadius: '4px', border: '1px solid #CBD5E1' }} />
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', color: '#94A3B8' }}>Date Taken:</label>
+            <input type="date" value={selectedPhoto.takenAt} onChange={(e) => setSelectedPhoto({ ...selectedPhoto, takenAt: e.target.value })} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '16px', borderRadius: '4px', border: '1px solid #475569', background: '#0B0F19', color: '#F8FAFC' }} />
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', color: '#94A3B8' }}>Caption:</label>
+            <input type="text" value={selectedPhoto.caption || ''} onChange={(e) => setSelectedPhoto({ ...selectedPhoto, caption: e.target.value })} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '16px', borderRadius: '4px', border: '1px solid #475569', background: '#0B0F19', color: '#F8FAFC' }} />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button type="button" onClick={() => setSelectedPhoto(null)} style={{ padding: '8px 12px', background: '#E2E8F0', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={() => setSelectedPhoto(null)} style={{ padding: '8px 12px', background: '#334155', color: '#F8FAFC', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
               <button type="submit" style={{ padding: '8px 12px', background: '#3B82F6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Save</button>
             </div>
           </form>

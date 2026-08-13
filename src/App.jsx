@@ -34,31 +34,97 @@ export default function App() {
   const thumbStartX = useRef(0);
   const thumbStartScroll = useRef(0);
 
-  // Dynamic Timeline Calculation
-  const { startYear, totalMonths, timelineMonths, pixelsPerMonth } = useMemo(() => {
+  // Segment-based Timeline & Photo Alignment Calculation
+  const segments = useMemo(() => {
     if (images.length === 0) {
       const now = new Date();
-      return { 
-        startYear: now.getFullYear(), 
-        totalMonths: 1, 
-        timelineMonths: [{ index: 0, year: now.getFullYear(), month: now.getMonth(), isJan: true }],
-        pixelsPerMonth: 420 
-      };
+      return [{
+        type: 'month',
+        year: now.getFullYear(),
+        month: now.getMonth(),
+        photos: [],
+        width: 300
+      }];
     }
 
-    const dates = images.map(img => new Date(img.takenAt));
-    const minDate = new Date(Math.min(...dates));
-    const maxDate = new Date(); // Always extend to now
-
-    const startYear = minDate.getFullYear();
-    const totalMonths = (maxDate.getFullYear() - startYear) * 12 + maxDate.getMonth() + 1;
-    
-    const timelineMonths = Array.from({ length: totalMonths }).map((_, i) => {
-      const date = new Date(startYear, i, 1);
-      return { index: i, year: date.getFullYear(), month: date.getMonth(), isJan: date.getMonth() === 0 };
+    // 1. Group photos by YYYY-MM
+    const photoMap = new Map();
+    images.forEach(img => {
+      const d = new Date(img.takenAt);
+      const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`;
+      if (!photoMap.has(key)) photoMap.set(key, []);
+      photoMap.get(key).push(img);
     });
 
-    return { startYear, totalMonths, timelineMonths, pixelsPerMonth: 420 };
+    // 2. Determine date range from oldest photo to now
+    const dates = images.map(img => new Date(img.takenAt));
+    const minDate = new Date(Math.min(...dates));
+    const maxDate = new Date();
+
+    const allMonths = [];
+    let curr = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+    const end = new Date(maxDate.getFullYear(), maxDate.getMonth(), 1);
+
+    while (curr <= end) {
+      const year = curr.getFullYear();
+      const month = curr.getMonth();
+      const key = `${year}-${String(month).padStart(2, '0')}`;
+      allMonths.push({
+        year,
+        month,
+        key,
+        photos: photoMap.get(key) || []
+      });
+      curr.setMonth(curr.getMonth() + 1);
+    }
+
+    // 3. Compress consecutive empty month gaps (> 2 empty months) into ellipsis segments
+    const processedSegments = [];
+    let emptyRun = [];
+
+    const flushEmptyRun = () => {
+      if (emptyRun.length === 0) return;
+      if (emptyRun.length <= 2) {
+        emptyRun.forEach(m => {
+          processedSegments.push({
+            type: 'month',
+            year: m.year,
+            month: m.month,
+            photos: [],
+            width: 160
+          });
+        });
+      } else {
+        processedSegments.push({
+          type: 'gap',
+          startYear: emptyRun[0].year,
+          startMonth: emptyRun[0].month,
+          endYear: emptyRun[emptyRun.length - 1].year,
+          endMonth: emptyRun[emptyRun.length - 1].month,
+          width: 100
+        });
+      }
+      emptyRun = [];
+    };
+
+    allMonths.forEach(m => {
+      if (m.photos.length === 0) {
+        emptyRun.push(m);
+      } else {
+        flushEmptyRun();
+        const photoCount = m.photos.length;
+        processedSegments.push({
+          type: 'month',
+          year: m.year,
+          month: m.month,
+          photos: m.photos,
+          width: Math.max(300, photoCount * 420)
+        });
+      }
+    });
+    flushEmptyRun();
+
+    return processedSegments;
   }, [images]);
 
   // Fetch timeline data
@@ -90,15 +156,15 @@ export default function App() {
 
   const virtualizer = useVirtualizer({
     horizontal: true,
-    count: images.length,
+    count: segments.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 420, 
+    estimateSize: (index) => segments[index].width,
     overscan: 3,
   });
 
   const totalWidth = virtualizer.getTotalSize();
 
-  // 60FPS Smooth Scroll Engine
+  // 60FPS Smooth Scroll Engine & Dynamic Year Tracking
   useEffect(() => {
     const update = () => {
       if (parentRef.current) {
@@ -121,9 +187,17 @@ export default function App() {
         }
         
         if (yearRef.current) {
-          const calculatedYear = startYear + Math.round(progress * (new Date().getFullYear() - startYear));
-          if (yearRef.current.innerText !== String(calculatedYear)) {
-            yearRef.current.innerText = calculatedYear;
+          let accumulatedWidth = 0;
+          let currentYear = segments[0]?.year || new Date().getFullYear();
+          for (const seg of segments) {
+            if (el.scrollLeft >= accumulatedWidth && el.scrollLeft < accumulatedWidth + seg.width) {
+              currentYear = seg.year || seg.startYear || currentYear;
+              break;
+            }
+            accumulatedWidth += seg.width;
+          }
+          if (yearRef.current.innerText !== String(currentYear)) {
+            yearRef.current.innerText = currentYear;
           }
         }
       }
@@ -132,7 +206,7 @@ export default function App() {
 
     requestRef.current = requestAnimationFrame(update);
     return () => cancelAnimationFrame(requestRef.current);
-  }, [startYear]);
+  }, [segments]);
 
   // Admin Verification
   const handleAdminLogin = async () => {
@@ -286,17 +360,95 @@ export default function App() {
         style={{ flex: 1, width: '100%', overflowX: 'hidden', overflowY: 'hidden', cursor: isGalleryGrabbing ? 'grabbing' : 'grab', userSelect: 'none', position: 'relative' }}
       >
         <div style={{ height: '100%', width: `${totalWidth}px`, position: 'relative' }}>
-          <div style={{ height: 'calc(100% - 100px)', position: 'relative', width: '100%' }}>
+          
+          {/* VIRTUALIZED SEGMENTS */}
+          <div style={{ height: '100%', position: 'relative', width: '100%' }}>
             {virtualizer.getVirtualItems().map((virtualItem) => {
-              const image = images[virtualItem.index];
-              if (!image) return null;
+              const segment = segments[virtualItem.index];
+              if (!segment) return null;
+              
               return (
-                <div key={virtualItem.key} onMouseEnter={() => setHoveredPhotoId(image.id)} onMouseLeave={() => setHoveredPhotoId(null)} onClick={() => isAdmin && setSelectedPhoto(image)} style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${virtualItem.size}px`, transform: `translateX(${virtualItem.start}px)`, paddingRight: '20px', boxSizing: 'border-box', cursor: isAdmin ? 'pointer' : 'default' }}>
-                  <div style={{ position: 'relative', height: '100%', width: '100%' }}>
-                    <img src={image.url} alt={image.alt} draggable={false} style={{ height: '100%', width: '100%', objectFit: 'cover', borderRadius: '12px', pointerEvents: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
-                    <div style={{ position: 'absolute', bottom: '10px', left: '10px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '11px' }}>{image.takenAt}</div>
-                    {isAdmin && hoveredPhotoId === image.id && (
-                      <button onClick={(e) => handleDeletePhoto(e, image.id)} title="Delete photo" style={{ position: 'absolute', top: '12px', right: '32px', backgroundColor: '#EF4444', color: 'white', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>✕</button>
+                <div 
+                  key={virtualItem.key} 
+                  style={{ 
+                    position: 'absolute', 
+                    top: 0, 
+                    left: 0, 
+                    height: '100%', 
+                    width: `${virtualItem.size}px`, 
+                    transform: `translateX(${virtualItem.start}px)`, 
+                    boxSizing: 'border-box' 
+                  }}
+                >
+                  {/* PHOTOS CONTAINER (UPPER AREA) */}
+                  <div style={{ height: 'calc(100% - 100px)', width: '100%', display: 'flex', gap: '20px', paddingRight: '20px', boxSizing: 'border-box' }}>
+                    {segment.type === 'month' && segment.photos.map((image) => (
+                      <div 
+                        key={image.id}
+                        onMouseEnter={() => setHoveredPhotoId(image.id)}
+                        onMouseLeave={() => setHoveredPhotoId(null)}
+                        onClick={() => isAdmin && setSelectedPhoto(image)}
+                        style={{ 
+                          position: 'relative', 
+                          height: '100%', 
+                          width: '400px', 
+                          flexShrink: 0,
+                          cursor: isAdmin ? 'pointer' : 'default' 
+                        }}
+                      >
+                        <div style={{ position: 'relative', height: '100%', width: '100%' }}>
+                          <img src={image.url} alt={image.alt} draggable={false} style={{ height: '100%', width: '100%', objectFit: 'cover', borderRadius: '12px', pointerEvents: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
+                          <div style={{ position: 'absolute', bottom: '10px', left: '10px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '11px' }}>
+                            {image.takenAt} {isAdmin && '✏️ Edit'}
+                          </div>
+                          {isAdmin && hoveredPhotoId === image.id && (
+                            <button
+                              onClick={(e) => handleDeletePhoto(e, image.id)}
+                              title="Delete photo"
+                              style={{
+                                position: 'absolute',
+                                top: '12px',
+                                right: '12px',
+                                backgroundColor: '#EF4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '32px',
+                                height: '32px',
+                                fontSize: '16px',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                              }}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* TIMELINE TICKS & ELLIPSIS (LOWER AREA) */}
+                  <div style={{ height: '100px', width: '100%', position: 'absolute', bottom: 0 }}>
+                    <div style={{ position: 'absolute', top: '20px', left: 0, right: 0, height: '6px', backgroundColor: '#CBD5E1', borderRadius: '3px' }} />
+                    
+                    {segment.type === 'month' ? (
+                      <div style={{ position: 'absolute', left: '20px', top: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', transform: 'translateX(-50%)' }}>
+                        <div style={{ width: segment.month === 0 ? '4px' : '2px', height: segment.month === 0 ? '24px' : '12px', backgroundColor: segment.month === 0 ? '#334155' : '#94A3B8', marginTop: segment.month === 0 ? '-9px' : '-3px', borderRadius: '2px' }} />
+                        {segment.month === 0 ? (
+                          <span style={{ marginTop: '8px', fontWeight: 'bold', color: '#475569', fontSize: '14px' }}>{segment.year}</span>
+                        ) : (
+                          <span style={{ marginTop: '8px', color: '#94A3B8', fontSize: '12px', fontWeight: '500' }}>{monthNames[segment.month]}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ position: 'absolute', left: '50%', top: '10px', transform: 'translateX(-50%)', color: '#94A3B8', fontSize: '16px', fontWeight: 'bold', letterSpacing: '2px' }}>
+                        ...
+                      </div>
                     )}
                   </div>
                 </div>
@@ -304,44 +456,28 @@ export default function App() {
             })}
           </div>
 
-          <div style={{ height: '100px', width: '100%', position: 'absolute', bottom: 0 }}>
-            <div style={{ position: 'absolute', top: '20px', left: 0, right: 0, height: '6px', backgroundColor: '#CBD5E1', borderRadius: '3px' }} />
-            {timelineMonths.map((item) => {
-              const leftPos = item.index * pixelsPerMonth;
-              return (
-                <div key={item.index} style={{ position: 'absolute', left: `${leftPos}px`, top: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', transform: 'translateX(-50%)' }}>
-                  <div style={{ width: item.isJan ? '4px' : '2px', height: item.isJan ? '24px' : '12px', backgroundColor: item.isJan ? '#334155' : '#94A3B8', marginTop: item.isJan ? '-9px' : '-3px', borderRadius: '2px' }} />
-                  {item.isJan ? (
-                    <span style={{ marginTop: '8px', fontWeight: 'bold', color: '#475569', fontSize: '14px' }}>{item.year}</span>
-                  ) : (
-                    <span style={{ marginTop: '8px', color: '#94A3B8', fontSize: '12px', fontWeight: '500' }}>{monthNames[item.month]}</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
 
       <div ref={scrollbarTrackRef} style={{ width: '100%', height: '10px', backgroundColor: '#E2E8F0', borderRadius: '5px', marginTop: '40px', position: 'relative' }}>
         <div ref={thumbRef} onMouseDown={handleThumbMouseDown} style={{ position: 'absolute', top: 0, height: '100%', width: '120px', backgroundColor: isThumbGrabbing ? '#475569' : '#64748B', borderRadius: '5px', cursor: isThumbGrabbing ? 'grabbing' : 'grab', left: 0, display: 'flex', justifyContent: 'center' }}>
           <div style={{ position: 'absolute', top: '-30px', backgroundColor: '#1E293B', color: 'white', padding: '4px 12px', borderRadius: '99px', fontSize: '14px', fontWeight: 'bold', pointerEvents: 'none' }}>
-            <span ref={yearRef}>{startYear}</span> 
+            <span ref={yearRef}>--</span> 
           </div>
         </div>
       </div>
 
       {selectedPhoto && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <form onSubmit={handleSavePhotoChanges} style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', width: '320px' }}>
-            <h3>Edit Photo Details</h3>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Date Taken:</label>
-            <input type="date" value={selectedPhoto.takenAt} onChange={(e) => setSelectedPhoto({ ...selectedPhoto, takenAt: e.target.value })} style={{ width: '100%', padding: '8px', marginBottom: '16px' }} />
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Caption:</label>
-            <input type="text" value={selectedPhoto.caption || ''} onChange={(e) => setSelectedPhoto({ ...selectedPhoto, caption: e.target.value })} style={{ width: '100%', padding: '8px', marginBottom: '16px' }} />
+          <form onSubmit={handleSavePhotoChanges} style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', width: '320px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ marginTop: 0 }}>Edit Photo Details</h3>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '6px' }}>Date Taken:</label>
+            <input type="date" value={selectedPhoto.takenAt} onChange={(e) => setSelectedPhoto({ ...selectedPhoto, takenAt: e.target.value })} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '16px', borderRadius: '4px', border: '1px solid #CBD5E1' }} />
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '6px' }}>Caption:</label>
+            <input type="text" value={selectedPhoto.caption || ''} onChange={(e) => setSelectedPhoto({ ...selectedPhoto, caption: e.target.value })} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '16px', borderRadius: '4px', border: '1px solid #CBD5E1' }} />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button type="button" onClick={() => setSelectedPhoto(null)} style={{ padding: '8px 12px' }}>Cancel</button>
-              <button type="submit" style={{ padding: '8px 12px', background: '#3B82F6', color: 'white' }}>Save</button>
+              <button type="button" onClick={() => setSelectedPhoto(null)} style={{ padding: '8px 12px', background: '#E2E8F0', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
+              <button type="submit" style={{ padding: '8px 12px', background: '#3B82F6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Save</button>
             </div>
           </form>
         </div>

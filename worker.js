@@ -3,20 +3,18 @@ export default {
     const url = new URL(request.url);
     const pathname = url.pathname;
 
-    // 1. Intercept local image requests and stream them directly from local R2 storage
-    if (pathname.startsWith('/cdn-cgi/image/')) {
-      // Strip out the /cdn-cgi/image/width=...,format=.../ prefix to get the raw R2 key
-      const r2Key = pathname.replace(/^\/cdn-cgi\/image\/[^/]+\//, '');
-      
+    // 1. Direct R2 image streaming route (Works locally & on *.workers.dev)
+    if (pathname.startsWith('/api/image/')) {
+      const r2Key = pathname.replace('/api/image/', '');
       const object = await env.BUCKET.get(r2Key);
+      
       if (!object) {
-        return new Response('Image not found in local R2', { status: 404 });
+        return new Response('Image not found in R2', { status: 404 });
       }
 
       const headers = new Headers();
       object.writeHttpMetadata(headers);
       headers.set('etag', object.httpEtag);
-      
       return new Response(object.body, { headers });
     }
 
@@ -54,7 +52,8 @@ export default {
       ).bind(dog.id).all();
 
       const photosWithCdnUrls = results.map(photo => ({
-        url: `/cdn-cgi/image/width=400,format=auto/${photo.r2_key}`,
+        // Maps directly to our worker's streaming endpoint
+        url: `/api/image/${photo.r2_key}`,
         takenAt: photo.taken_at,
         caption: photo.caption
       }));

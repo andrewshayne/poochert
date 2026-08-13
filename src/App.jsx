@@ -240,7 +240,8 @@ export default function App() {
 
   const handleTouchMove = (e) => {
     if (!isDraggingGallery.current) return;
-    const walk = e.touches[0].pageX - galleryStartX.current;
+    // Multiplied by 2.2 to make mobile touch scrolling significantly faster and more responsive
+    const walk = (e.touches[0].pageX - galleryStartX.current) * 2.2;
     targetScroll.current = galleryStartScroll.current - walk;
   };
 
@@ -274,7 +275,7 @@ export default function App() {
   }, []);
 
   return (
-    <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} style={{ height: '100vh', width: '100%', maxWidth: '100vw', padding: '8px 0 12px 0', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', backgroundColor: '#0b0f19', fontFamily: 'sans-serif', position: 'relative', overflowX: 'hidden' }}>
+    <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} style={{ height: '100vh', width: '100%', maxWidth: '100vw', padding: '8px 0 16px 0', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', backgroundColor: '#0b0f19', fontFamily: 'sans-serif', position: 'relative', overflowX: 'hidden' }}>
       
       {/* HEADER */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '8px', padding: '0 16px' }}>
@@ -415,8 +416,8 @@ export default function App() {
                       )}
 
                       {segment.type === 'gap' && (
-                        <div style={{ color: '#475569', fontSize: '24px', fontWeight: 'bold', letterSpacing: '4px' }}>
-                          ...
+                        <div style={{ color: '#64748B', fontSize: '42px', fontWeight: 'bold', letterSpacing: '10px' }}>
+                          ···
                         </div>
                       )}
                     </div>
@@ -427,8 +428,8 @@ export default function App() {
                       
                       {segment.type === 'month' && (
                         <div style={{ position: 'absolute', left: '20px', top: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', transform: 'translateX(-50%)' }}>
-                          <div style={{ width: '2px', height: '16px', backgroundColor: '#64748B', marginTop: '-4px', borderRadius: '2px' }} />
-                          <span style={{ marginTop: '8px', color: '#94A3B8', fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                          <div style={{ width: '3px', height: '22px', backgroundColor: '#94A3B8', marginTop: '-5px', borderRadius: '2px' }} />
+                          <span style={{ marginTop: '8px', color: '#E2E8F0', fontSize: '15px', fontWeight: '600', whiteSpace: 'nowrap' }}>
                             {monthNames[segment.month]} {segment.year}
                           </span>
                         </div>
@@ -444,11 +445,11 @@ export default function App() {
         </div>
       </div>
 
-      {/* SCROLLBAR */}
+      {/* SCROLLBAR (Taller track & thumb) */}
       <div style={{ padding: '0 16px' }}>
-        <div ref={scrollbarTrackRef} style={{ width: '100%', height: '10px', backgroundColor: '#1E293B', borderRadius: '5px', marginTop: '12px', position: 'relative' }}>
-          <div ref={thumbRef} onMouseDown={handleThumbMouseDown} style={{ position: 'absolute', top: 0, height: '100%', width: '120px', backgroundColor: isThumbGrabbing ? '#64748B' : '#475569', borderRadius: '5px', cursor: isThumbGrabbing ? 'grabbing' : 'grab', left: 0, display: 'flex', justifyContent: 'center' }}>
-            <div style={{ position: 'absolute', top: '-36px', backgroundColor: '#1E293B', color: '#F8FAFC', padding: '4px 12px', borderRadius: '99px', fontSize: '13px', fontWeight: 'bold', pointerEvents: 'none', whiteSpace: 'nowrap', boxShadow: '0 4px 6px rgba(0,0,0,0.4)', border: '1px solid #334155' }}>
+        <div ref={scrollbarTrackRef} style={{ width: '100%', height: '14px', backgroundColor: '#1E293B', borderRadius: '7px', marginTop: '12px', position: 'relative' }}>
+          <div ref={thumbRef} onMouseDown={handleThumbMouseDown} style={{ position: 'absolute', top: 0, height: '100%', width: '120px', backgroundColor: isThumbGrabbing ? '#64748B' : '#475569', borderRadius: '7px', cursor: isThumbGrabbing ? 'grabbing' : 'grab', left: 0, display: 'flex', justifyContent: 'center' }}>
+            <div style={{ position: 'absolute', top: '-42px', backgroundColor: '#1E293B', color: '#F8FAFC', padding: '6px 16px', borderRadius: '99px', fontSize: '15px', fontWeight: 'bold', pointerEvents: 'none', whiteSpace: 'nowrap', boxShadow: '0 4px 6px rgba(0,0,0,0.4)', border: '1px solid #334155' }}>
               <span ref={dateBubbleRef}>--</span> 
             </div>
           </div>

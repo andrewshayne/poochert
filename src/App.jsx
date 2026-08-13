@@ -198,6 +198,26 @@ export default function App() {
   const handleGalleryMouseDown = (e) => { if (selectedPhoto) return; isDraggingGallery.current = true; setIsGalleryGrabbing(true); galleryStartX.current = e.pageX; galleryStartScroll.current = targetScroll.current; };
   const handleGalleryMouseMove = (e) => { if (!isDraggingGallery.current) return; e.preventDefault(); const walk = e.pageX - galleryStartX.current; targetScroll.current = galleryStartScroll.current - walk; };
   const handleGalleryMouseUp = () => { isDraggingGallery.current = false; setIsGalleryGrabbing(false); };
+
+  const handleTouchStart = (e) => {
+    if (selectedPhoto) return;
+    isDraggingGallery.current = true;
+    setIsGalleryGrabbing(true);
+    galleryStartX.current = e.touches[0].pageX;
+    galleryStartScroll.current = targetScroll.current;
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDraggingGallery.current) return;
+    const walk = e.touches[0].pageX - galleryStartX.current;
+    targetScroll.current = galleryStartScroll.current - walk;
+  };
+
+  const handleTouchEnd = () => {
+    isDraggingGallery.current = false;
+    setIsGalleryGrabbing(false);
+  };
+
   const handleThumbMouseDown = (e) => { e.stopPropagation(); e.preventDefault(); isDraggingThumb.current = true; setIsThumbGrabbing(true); thumbStartX.current = e.clientX; thumbStartScroll.current = targetScroll.current; };
 
   useEffect(() => {
@@ -245,7 +265,17 @@ export default function App() {
       )}
 
       {/* GALLERY */}
-      <div ref={parentRef} onMouseDown={handleGalleryMouseDown} onMouseLeave={handleGalleryMouseUp} onMouseUp={handleGalleryMouseUp} onMouseMove={handleGalleryMouseMove} style={{ flex: 1, width: '100%', overflowX: 'hidden', overflowY: 'hidden', cursor: isGalleryGrabbing ? 'grabbing' : 'grab', userSelect: 'none', position: 'relative' }}>
+      <div 
+        ref={parentRef} 
+        onMouseDown={handleGalleryMouseDown} 
+        onMouseLeave={handleGalleryMouseUp} 
+        onMouseUp={handleGalleryMouseUp} 
+        onMouseMove={handleGalleryMouseMove}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ flex: 1, width: '100%', overflowX: 'hidden', overflowY: 'hidden', cursor: isGalleryGrabbing ? 'grabbing' : 'grab', userSelect: 'none', position: 'relative', touchAction: 'none' }}
+      >
         <div style={{ height: '100%', width: `${totalWidth}px`, position: 'relative' }}>
           
           <div style={{ height: '100%', position: 'relative', width: '100%' }}>

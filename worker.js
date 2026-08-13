@@ -45,7 +45,15 @@ export default {
       return new Response('Dog profile not found or subscription inactive.', { status: 404 });
     }
 
-    // --- ADMIN WRITE & DELETE ROUTES (Protected by ADMIN_SECRET) ---
+    // --- ADMIN AUTH & WRITE ROUTES ---
+    if (subRoute === 'api' && pathParts[2] === 'verify-admin' && method === 'POST') {
+      const adminSecret = request.headers.get('X-Admin-Secret');
+      if (adminSecret !== env.ADMIN_SECRET) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+      return Response.json({ success: true });
+    }
+
     if (subRoute === 'api' && pathParts[2] === 'upload' && method === 'POST') {
       const adminSecret = request.headers.get('X-Admin-Secret');
       if (adminSecret !== env.ADMIN_SECRET) {
@@ -102,7 +110,6 @@ export default {
 
       const photoId = pathParts[3];
 
-      // Fetch r2_key so we can delete the file from R2 storage
       const photo = await env.DB.prepare(
         "SELECT r2_key FROM photos WHERE id = ? AND dog_id = ?"
       ).bind(photoId, dog.id).first();
@@ -111,10 +118,8 @@ export default {
         return new Response('Photo not found', { status: 404 });
       }
 
-      // Delete binary from R2 bucket
       await env.BUCKET.delete(photo.r2_key);
 
-      // Delete record from D1 database
       await env.DB.prepare(
         "DELETE FROM photos WHERE id = ? AND dog_id = ?"
       ).bind(photoId, dog.id).run();

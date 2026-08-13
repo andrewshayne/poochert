@@ -9,6 +9,8 @@ export default function App() {
   
   const [images, setImages] = useState([]);
   const [dogName, setDogName] = useState('Bailey');
+  const [aspectRatios, setAspectRatios] = useState({});
+  const [trackHeight, setTrackHeight] = useState(320);
   
   // Admin & Editing State
   const [isAdmin, setIsAdmin] = useState(false);
@@ -35,8 +37,38 @@ export default function App() {
   const thumbStartX = useRef(0);
   const thumbStartScroll = useRef(0);
 
-  // Segment-based Timeline Calculation via Utility
-  const segments = useMemo(() => calculateTimelineSegments(images), [images]);
+  // Capture natural image aspect ratios on load to recalculate masonry geometry
+  const handleImageLoad = (id, e) => {
+    const { naturalWidth, naturalHeight } = e.target;
+    if (naturalWidth && naturalHeight) {
+      const ratio = naturalWidth / naturalHeight;
+      setAspectRatios(prev => {
+        if (prev[id] === ratio) return prev;
+        return { ...prev, [id]: ratio };
+      });
+    }
+  };
+
+  // Keep Virtualizer widths perfectly synced with DOM height mathematically
+  useEffect(() => {
+    const updateHeight = () => {
+      if (parentRef.current) {
+        // Subtract 100px for the timeline ticks area to get the true photo zone height
+        const newHeight = parentRef.current.clientHeight - 100; 
+        if (newHeight > 0) setTrackHeight(newHeight);
+      }
+    };
+    
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
+  }, []);
+
+  // Pass tracked DOM height into the segment calculator
+  const segments = useMemo(
+    () => calculateTimelineSegments(images, aspectRatios, trackHeight),
+    [images, aspectRatios, trackHeight]
+  );
 
   const fetchPhotos = useCallback(() => {
     const pathParts = window.location.pathname.split('/').filter(Boolean);
@@ -286,68 +318,88 @@ export default function App() {
               return (
                 <div key={virtualItem.key} style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${virtualItem.size}px`, transform: `translateX(${virtualItem.start}px)`, boxSizing: 'border-box' }}>
                   
-                  {/* PHOTOS & ELLIPSIS CONTAINER (UPPER AREA) */}
+                  {/* PHOTOS CONTAINER (UPPER AREA) - HORIZONTAL MASONRY */}
                   <div style={{ height: 'calc(100% - 100px)', width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: segment.type === 'gap' ? 'center' : 'flex-start', paddingRight: '20px' }}>
                     
                     {segment.type === 'month' && (
                       <div style={{ 
-                        display: 'grid', 
-                        gridTemplateRows: 'repeat(2, calc(50% - 6px))', 
-                        gridAutoColumns: '190px',
-                        gridAutoFlow: 'column',
+                        display: 'flex', 
+                        flexDirection: 'column',
                         gap: '12px', 
                         height: '100%', 
-                        width: '100%',
-                        alignContent: 'center'
+                        width: 'max-content',
+                        justifyContent: 'center'
                       }}>
-                        {segment.tiles.map((image) => {
-                          const isHovered = hoveredPhotoId === image.id;
+                        {segment.rows && segment.rows.map((row, rowIndex) => (
+                          <div key={rowIndex} style={{
+                            display: 'flex',
+                            flexDirection: 'row',
+                            gap: '12px',
+                            height: segment.rows.length === 1 ? '100%' : 'calc(50% - 6px)',
+                            alignItems: 'center'
+                          }}>
+                            {row.map((image) => {
+                              const isHovered = hoveredPhotoId === image.id;
 
-                          return (
-                            <div 
-                              key={image.id}
-                              className="fish-eye-tile"
-                              data-hovered={isHovered ? 'true' : 'false'}
-                              onMouseEnter={() => setHoveredPhotoId(image.id)}
-                              onMouseLeave={() => setHoveredPhotoId(null)}
-                              onClick={() => isAdmin && setSelectedPhoto(image)}
-                              style={{ 
-                                position: 'relative', 
-                                gridRow: `span ${image.rowSpan}`,
-                                gridColumn: `span ${image.colSpan}`,
-                                height: '100%', 
-                                width: '100%', 
-                                cursor: isAdmin ? 'pointer' : 'default',
-                                willChange: 'transform'
-                              }}
-                            >
-                              <div style={{ 
-                                position: 'relative', 
-                                height: '100%', 
-                                width: '100%',
-                                transform: `scale(${isHovered ? 1.08 : 1})`,
-                                transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease-out',
-                                transformOrigin: 'center center'
-                              }}>
-                                <img src={image.url} alt={image.alt} draggable={false} style={{ height: '100%', width: '100%', objectFit: 'cover', borderRadius: '12px', pointerEvents: 'none', boxShadow: isHovered ? '0 20px 36px rgba(0,0,0,0.35)' : '0 4px 6px rgba(0,0,0,0.1)' }} />
-                                <div style={{ position: 'absolute', bottom: '8px', left: '8px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>
-                                  {image.takenAt} {isAdmin && '✏️'}
+                              return (
+                                <div 
+                                  key={image.id}
+                                  className="fish-eye-tile"
+                                  data-hovered={isHovered ? 'true' : 'false'}
+                                  onMouseEnter={() => setHoveredPhotoId(image.id)}
+                                  onMouseLeave={() => setHoveredPhotoId(null)}
+                                  onClick={() => isAdmin && setSelectedPhoto(image)}
+                                  style={{ 
+                                    position: 'relative', 
+                                    height: '100%', 
+                                    aspectRatio: `${image.ratio}`,
+                                    cursor: isAdmin ? 'pointer' : 'default',
+                                    willChange: 'transform',
+                                    flexShrink: 0
+                                  }}
+                                >
+                                  <div style={{ 
+                                    position: 'relative', 
+                                    height: '100%', 
+                                    width: '100%',
+                                    transform: `scale(${isHovered ? 1.08 : 1})`,
+                                    transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease-out',
+                                    transformOrigin: 'center center'
+                                  }}>
+                                    <img 
+                                      src={image.url} 
+                                      alt={image.alt} 
+                                      draggable={false} 
+                                      onLoad={(e) => handleImageLoad(image.id, e)}
+                                      style={{ 
+                                        height: '100%', 
+                                        width: '100%', 
+                                        objectFit: 'cover', 
+                                        borderRadius: '12px', 
+                                        pointerEvents: 'none', 
+                                        boxShadow: isHovered ? '0 20px 36px rgba(0,0,0,0.35)' : '0 4px 6px rgba(0,0,0,0.1)' 
+                                      }} 
+                                    />
+                                    <div style={{ position: 'absolute', bottom: '8px', left: '8px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>
+                                      {image.takenAt} {isAdmin && '✏️'}
+                                    </div>
+                                    {isAdmin && isHovered && (
+                                      <button
+                                        onClick={(e) => handleDeletePhoto(e, image.id)}
+                                        title="Delete photo"
+                                        style={{
+                                          position: 'absolute', top: '8px', right: '8px', backgroundColor: '#EF4444', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                                        }}
+                                      >
+                                        ✕
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
-                                {isAdmin && isHovered && (
-                                  <button
-                                    onClick={(e) => handleDeletePhoto(e, image.id)}
-                                    title="Delete photo"
-                                    style={{
-                                      position: 'absolute', top: '8px', right: '8px', backgroundColor: '#EF4444', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
-                                    }}
-                                  >
-                                    ✕
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                              );
+                            })}
+                          </div>
+                        ))}
                       </div>
                     )}
 

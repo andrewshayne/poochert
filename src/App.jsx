@@ -74,7 +74,7 @@ export default function App() {
 
   const totalWidth = virtualizer.getTotalSize();
 
-  // 60FPS Smooth Scroll Engine, Dynamic Date Label, & Scrollbar Thumb Sync
+  // 60FPS Smooth Scroll Engine, True Screen-Space Fish-Eye Scaling, Date Label & Scrollbar Sync
   useEffect(() => {
     const update = () => {
       if (parentRef.current) {
@@ -89,7 +89,27 @@ export default function App() {
         } else {
           el.scrollLeft = targetScroll.current; 
         }
-        
+
+        // True Screen-Space Fish-Eye Bell-Curve Scaling via getBoundingClientRect()
+        const containerRect = el.getBoundingClientRect();
+        const containerCenterX = containerRect.left + containerRect.width / 2;
+        const maxDist = containerRect.width / 2;
+
+        const tileElements = el.querySelectorAll('.fish-eye-tile');
+        tileElements.forEach(tileEl => {
+          const tileRect = tileEl.getBoundingClientRect();
+          const tileCenterX = tileRect.left + tileRect.width / 2;
+          const distanceFromCenter = Math.abs(tileCenterX - containerCenterX);
+          const normalizedDist = Math.min(1, distanceFromCenter / (maxDist || 1));
+          
+          // Bell-curve scale: 1.0 at screen center, 0.5 at screen edges
+          const bellScale = 0.5 + 0.5 * Math.cos(normalizedDist * (Math.PI / 2));
+          const isHovered = tileEl.dataset.hovered === 'true';
+
+          tileEl.style.transform = `scale(${bellScale})`;
+          tileEl.style.zIndex = isHovered ? '50' : Math.round(bellScale * 10).toString();
+        });
+
         // Update Date Bubble (Month + Year)
         if (dateBubbleRef.current && segments.length > 0) {
           let accumulatedWidth = 0;
@@ -203,10 +223,10 @@ export default function App() {
   }, []);
 
   return (
-    <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} style={{ height: '100vh', width: '100%', maxWidth: '100vw', padding: '10px 16px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc', fontFamily: 'sans-serif', position: 'relative', overflowX: 'hidden' }}>
+    <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} style={{ height: '100vh', width: '100%', maxWidth: '100vw', padding: '6px 4px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc', fontFamily: 'sans-serif', position: 'relative', overflowX: 'hidden' }}>
       
       {/* HEADER */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '8px' }}>
         <div />
         <h1 style={{ margin: 0, fontSize: '26px', color: '#1E293B', textAlign: 'center', fontWeight: '700' }}>{dogName}</h1>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', alignItems: 'center' }}>
@@ -252,9 +272,12 @@ export default function App() {
                       }}>
                         {segment.tiles.map((image) => {
                           const isHovered = hoveredPhotoId === image.id;
+
                           return (
                             <div 
                               key={image.id}
+                              className="fish-eye-tile"
+                              data-hovered={isHovered ? 'true' : 'false'}
                               onMouseEnter={() => setHoveredPhotoId(image.id)}
                               onMouseLeave={() => setHoveredPhotoId(null)}
                               onClick={() => isAdmin && setSelectedPhoto(image)}
@@ -265,13 +288,18 @@ export default function App() {
                                 height: '100%', 
                                 width: '100%', 
                                 cursor: isAdmin ? 'pointer' : 'default',
-                                transform: isHovered ? 'scale(1.12)' : 'scale(1)',
-                                transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                                zIndex: isHovered ? 30 : 1
+                                willChange: 'transform'
                               }}
                             >
-                              <div style={{ position: 'relative', height: '100%', width: '100%' }}>
-                                <img src={image.url} alt={image.alt} draggable={false} style={{ height: '100%', width: '100%', objectFit: 'cover', borderRadius: '12px', pointerEvents: 'none', boxShadow: isHovered ? '0 18px 32px rgba(0,0,0,0.3)' : '0 4px 6px rgba(0,0,0,0.1)', transition: 'box-shadow 0.25s ease' }} />
+                              <div style={{ 
+                                position: 'relative', 
+                                height: '100%', 
+                                width: '100%',
+                                transform: `scale(${isHovered ? 1.08 : 1})`,
+                                transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease-out',
+                                transformOrigin: 'center center'
+                              }}>
+                                <img src={image.url} alt={image.alt} draggable={false} style={{ height: '100%', width: '100%', objectFit: 'cover', borderRadius: '12px', pointerEvents: 'none', boxShadow: isHovered ? '0 20px 36px rgba(0,0,0,0.35)' : '0 4px 6px rgba(0,0,0,0.1)' }} />
                                 <div style={{ position: 'absolute', bottom: '8px', left: '8px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>
                                   {image.takenAt} {isAdmin && '✏️'}
                                 </div>
@@ -323,7 +351,7 @@ export default function App() {
       </div>
 
       {/* SCROLLBAR */}
-      <div ref={scrollbarTrackRef} style={{ width: '100%', height: '10px', backgroundColor: '#E2E8F0', borderRadius: '5px', marginTop: '16px', position: 'relative' }}>
+      <div ref={scrollbarTrackRef} style={{ width: '100%', height: '10px', backgroundColor: '#E2E8F0', borderRadius: '5px', marginTop: '12px', position: 'relative' }}>
         <div ref={thumbRef} onMouseDown={handleThumbMouseDown} style={{ position: 'absolute', top: 0, height: '100%', width: '120px', backgroundColor: isThumbGrabbing ? '#475569' : '#64748B', borderRadius: '5px', cursor: isThumbGrabbing ? 'grabbing' : 'grab', left: 0, display: 'flex', justifyContent: 'center' }}>
           <div style={{ position: 'absolute', top: '-36px', backgroundColor: '#1E293B', color: 'white', padding: '4px 12px', borderRadius: '99px', fontSize: '13px', fontWeight: 'bold', pointerEvents: 'none', whiteSpace: 'nowrap', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
             <span ref={dateBubbleRef}>--</span> 

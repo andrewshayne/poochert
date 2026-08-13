@@ -4,6 +4,7 @@ compatibility_date = "2026-08-12"
 
 [vars]
 ENVIRONMENT = "production"
+ADMIN_SECRET = "donttrusttheStoat2021"
 
 [[d1_databases]]
 binding = "DB"
